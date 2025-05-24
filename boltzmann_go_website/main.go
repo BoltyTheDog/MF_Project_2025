@@ -226,10 +226,6 @@ func (sim *CFDSimulation) initArrays() {
 	}
 }
 
-// Add this improved version of the initializeBarrier function to your main.go
-
-// Improved initializeBarrier function to better handle custom obstacles
-
 func (sim *CFDSimulation) initializeBarrier() {
 	xdim := sim.config.XDim
 	ydim := sim.config.YDim
@@ -287,7 +283,6 @@ func (sim *CFDSimulation) initializeBarrier() {
 		log.Printf("Created NACA airfoil obstacle")
 
 	case "custom":
-		// Improved custom obstacle handling with better error checking
 		if sim.config.Obstacle.Data != nil {
 			customData := sim.config.Obstacle.Data
 			dataHeight := len(customData)
@@ -578,23 +573,6 @@ func (sim *CFDSimulation) reset() {
 	sim.timestep = 0
 }
 
-// advance performs one simulation step
-func (sim *CFDSimulation) advance() {
-	defer func() {
-		if r := recover(); r != nil {
-			log.Printf("Panic in advance: %v", r)
-		}
-	}()
-
-	sim.mutex.Lock()
-	defer sim.mutex.Unlock()
-
-	sim.collide()
-	sim.stream()
-	sim.bounce()
-	sim.timestep++
-}
-
 // parallelAdvance performs multiple simulation steps with parallel processing
 func (sim *CFDSimulation) parallelAdvance() {
 	defer func() {
@@ -615,60 +593,6 @@ func (sim *CFDSimulation) parallelAdvance() {
 		sim.bounce()
 		sim.timestep++
 		sim.mutex.Unlock()
-	}
-}
-
-func (sim *CFDSimulation) collide() {
-	xdim := sim.config.XDim
-	ydim := sim.config.YDim
-	omega := 1 / (3*sim.config.Viscosity + 0.5) // reciprocal of tau, the relaxation time
-
-	for x := 0; x < xdim; x++ {
-		for y := 0; y < ydim; y++ {
-			if !sim.barrier[x][y] {
-				n := sim.n0[x][y] + sim.nN[x][y] + sim.nS[x][y] + sim.nE[x][y] + sim.nW[x][y] + sim.nNW[x][y] + sim.nNE[x][y] + sim.nSW[x][y] + sim.nSE[x][y]
-				sim.density[x][y] = n
-				one9thn := sim.one9th * n
-				one36thn := sim.one36th * n
-
-				// Calculate velocity components
-				var vx, vy float64
-				if n > 0 {
-					vx = (sim.nE[x][y] + sim.nNE[x][y] + sim.nSE[x][y] - sim.nW[x][y] - sim.nNW[x][y] - sim.nSW[x][y]) / n
-				}
-				sim.xvel[x][y] = vx
-
-				if n > 0 {
-					vy = (sim.nN[x][y] + sim.nNE[x][y] + sim.nNW[x][y] - sim.nS[x][y] - sim.nSE[x][y] - sim.nSW[x][y]) / n
-				}
-				sim.yvel[x][y] = vy
-
-				// Calculate speed squared
-				vx3 := 3 * vx
-				vy3 := 3 * vy
-				vx2 := vx * vx
-				vy2 := vy * vy
-				vxvy2 := 2 * vx * vy
-				v2 := vx2 + vy2
-				sim.speed2[x][y] = v2
-				v215 := 1.5 * v2
-
-				// Calculate pressure (p = c_s^2 * rho in LBM)
-				// c_s^2 = 1/3 in the D2Q9 model
-				sim.pressure[x][y] = n / 3.0
-
-				// Existing collision code...
-				sim.n0[x][y] += omega * (sim.four9ths*n*(1-v215) - sim.n0[x][y])
-				sim.nE[x][y] += omega * (one9thn*(1+vx3+4.5*vx2-v215) - sim.nE[x][y])
-				sim.nW[x][y] += omega * (one9thn*(1-vx3+4.5*vx2-v215) - sim.nW[x][y])
-				sim.nN[x][y] += omega * (one9thn*(1+vy3+4.5*vy2-v215) - sim.nN[x][y])
-				sim.nS[x][y] += omega * (one9thn*(1-vy3+4.5*vy2-v215) - sim.nS[x][y])
-				sim.nNE[x][y] += omega * (one36thn*(1+vx3+vy3+4.5*(v2+vxvy2)-v215) - sim.nNE[x][y])
-				sim.nNW[x][y] += omega * (one36thn*(1-vx3+vy3+4.5*(v2-vxvy2)-v215) - sim.nNW[x][y])
-				sim.nSE[x][y] += omega * (one36thn*(1+vx3-vy3+4.5*(v2-vxvy2)-v215) - sim.nSE[x][y])
-				sim.nSW[x][y] += omega * (one36thn*(1-vx3-vy3+4.5*(v2+vxvy2)-v215) - sim.nSW[x][y])
-			}
-		}
 	}
 }
 
@@ -883,8 +807,6 @@ func (sim *CFDSimulation) bounce() {
 	}
 }
 
-// Updated createFrame function to display velocity and pressure stacked vertically
-// with larger labels
 func (sim *CFDSimulation) createFrame() *image.Paletted {
 	width := sim.config.Width
 	height := sim.config.Height
@@ -996,8 +918,6 @@ func (sim *CFDSimulation) createFrame() *image.Paletted {
 			}
 		}
 
-		// Add label for velocity field - make it larger
-		DrawLargeLabel(img, "VELOCITY", width/2-60, 30, 251)
 	}
 
 	// Draw pressure field (bottom half or full image if only showing pressure)

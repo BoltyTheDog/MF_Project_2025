@@ -1,4 +1,5 @@
 @echo off
+cd /d "%~dp0"
 echo Setting up Boltzmann CFD Simulator...
 
 REM Check for Node.js and npm

@@ -23,8 +23,6 @@ let simulationProgress = {
   status: 'idle'
 };
 
-// Modified server.js to handle large obstacle images better
-// Add this code to your server.js file
 
 // 1. Add image resizing to the processObstacleImage function
 async function processObstacleImage(imageData) {
@@ -166,8 +164,6 @@ async function processObstacleImage(imageData) {
 app.get('/', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'index.html'));
 });
-
-// Full updated app.post('/api/simulate') route with all improvements
 
 app.post('/api/simulate', async (req, res) => {
   const {

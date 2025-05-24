@@ -8,21 +8,6 @@ A professional web-based Computational Fluid Dynamics simulator using the Lattic
 - Node.js 14.x or higher
 - npm
 
-## Quick Setup
-
-### On Linux/Mac:
-```bash
-# Clone the repository
-git clone https://github.com/yourusername/boltzmann-cfd-simulator.git
-cd boltzmann-cfd-simulator
-
-# Run the setup script
-chmod +x setup.sh
-./setup.sh
-
-# Start the server
-npm start
-```
 
 ### On Windows:
 ```batch
@@ -47,9 +32,7 @@ boltzmann-cfd-simulator/
 ├── server.js                # Node.js Express backend server
 ├── package.json             # Node.js dependencies and scripts
 ├── index.html               # Main HTML file with modern UI
-├── netlify.toml             # Netlify deployment configuration
 ├── default_config.json      # Default configuration
-├── setup.sh                 # Setup script for Linux/Mac
 ├── setup.bat                # Setup script for Windows
 ├── README.md                # Project documentation
 └── public/                  # Static files (created at runtime)
