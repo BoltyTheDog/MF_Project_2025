@@ -1,6 +1,6 @@
 # CFD Simulation Collection
 
-This repository contains two Computational Fluid Dynamics (CFD) simulation projects using different numerical methods.
+This repository contains two Computational Fluid Dynamics (CFD) simulation projects using different numerical methods. Each has a README.md for the instructions and use.
 
 ## Projects
 
@@ -26,3 +26,7 @@ This repository contains two Computational Fluid Dynamics (CFD) simulation proje
 ## License
 
 Open source - feel free to modify and distribute.
+
+## Authors
+
+Bryan Jimenez, Mateu Palomar, David Garcia
