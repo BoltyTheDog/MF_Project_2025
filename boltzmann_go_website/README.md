@@ -83,4 +83,4 @@ The simulation consists of three main steps:
 
 ## License
 
-MIT
+Open source - feel free to modify and distribute.
