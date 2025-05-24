@@ -1,0 +1,28 @@
+# CFD Simulation Collection
+
+This repository contains two Computational Fluid Dynamics (CFD) simulation projects using different numerical methods.
+
+## Projects
+
+### Potential Flow Simulator
+**Path**: `/potential_flow/`
+- 2D potential flow solver using finite difference methods
+- Go + Python implementation
+- Airfoil analysis with lift/drag calculations
+- Command-line interface
+
+### Boltzmann CFD Simulator  
+**Path**: `/boltzmann_cfd/`
+- Lattice Boltzmann Method for viscous flows
+- Go + Node.js web-based interface
+- Real-time parameter adjustment
+- Animated GIF output
+
+## Requirements
+
+**Potential Flow**: Go 1.18+, Python 3.6+, gonum, numpy, matplotlib
+**Boltzmann CFD**: Go 1.18+, Node.js 14.x+, npm
+
+## License
+
+Open source - feel free to modify and distribute.
