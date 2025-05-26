@@ -22,7 +22,6 @@ import (
 	"gonum.org/v1/plot/vg/draw"
 )
 
-// FluidFlowSimulation holds all simulation data
 type FluidFlowSimulation struct {
 	// Grid dimensions
 	nx, ny int
@@ -63,6 +62,7 @@ type Airfoil struct {
 	chord            float64
 	angleOfAttack    float64 // in degrees
 	useCustomProfile bool    // whether to use custom profile or NACA equation
+	circulation      float64 // circulation parameter (similar to Python's C)
 	// Parameters for NACA equation
 	thicknessRatio    float64
 	camber, camberPos float64
@@ -174,7 +174,6 @@ func (sim *FluidFlowSimulation) AddCylinder(centerX, centerY, radius float64) {
 	}
 }
 
-// AddRotatingCylinder adds a rotating cylinder with circulation to the flow field
 func (sim *FluidFlowSimulation) AddRotatingCylinder(centerX, centerY, radius, circulation float64) {
 	// Mask solid points same as regular cylinder
 	for i := 0; i < sim.nx; i++ {
@@ -185,6 +184,22 @@ func (sim *FluidFlowSimulation) AddRotatingCylinder(centerX, centerY, radius, ci
 		}
 	}
 
+	// Initialize stream function with circulation control (same as airfoil)
+	for j := 0; j < sim.ny; j++ {
+		for i := 0; i < sim.nx; i++ {
+			if !sim.mask[j][i] {
+				// Inside cylinder: set constant stream function value
+				sim.psi[j][i] = circulation
+			} else {
+				// Outside cylinder: initialize with free stream flow
+				sim.psi[j][i] = sim.vInf * sim.y[j]
+			}
+		}
+	}
+
+	// Reset boundary conditions
+	sim.setBoundaryConditions()
+
 	// Store for visualization and calculation
 	sim.rotatingCylinder = &RotatingCylinder{
 		centerX:     centerX,
@@ -193,30 +208,44 @@ func (sim *FluidFlowSimulation) AddRotatingCylinder(centerX, centerY, radius, ci
 		circulation: circulation,
 	}
 
-	// Apply analytical solution of rotating cylinder for boundary conditions
-	// This initializes psi with values that include circulation effects
-	// Helps convergence by providing a good initial guess
+	fmt.Printf("Initialized cylinder stream function with circulation parameter: %.2f\n", circulation)
+}
+
+func (sim *FluidFlowSimulation) initializeAirfoilStreamFunction(centerX, centerY, circulation float64) {
 	for j := 0; j < sim.ny; j++ {
 		for i := 0; i < sim.nx; i++ {
-			// Calculate r and theta for polar coordinates
-			dx := sim.x[i] - centerX
-			dy := sim.y[j] - centerY
-			r := math.Sqrt(dx*dx + dy*dy)
-			theta := math.Atan2(dy, dx)
-
-			// Only calculate for points outside the cylinder
-			if r > radius {
-				// Analytical solution from potential flow theory
-				// ψ = U*r*sin(θ)*(1 - (a²/r²)) - (Γ/(2π))*ln(r/a)
-				sim.psi[j][i] = sim.vInf*r*math.Sin(theta)*(1-math.Pow(radius/r, 2)) -
-					(circulation/(2*math.Pi))*math.Log(r/radius)
+			if !sim.mask[j][i] {
+				// Inside airfoil: set constant stream function value (like Python's C parameter)
+				sim.psi[j][i] = circulation
+			} else {
+				// Outside airfoil: initialize with free stream flow
+				sim.psi[j][i] = sim.vInf * sim.y[j]
 			}
 		}
 	}
+
+	// Set boundary conditions
+	// Inlet boundary
+	for j := 0; j < sim.ny; j++ {
+		sim.psi[j][0] = sim.vInf * sim.y[j]
+	}
+
+	// Top and bottom boundaries
+	for i := 0; i < sim.nx; i++ {
+		sim.psi[0][i] = sim.vInf * sim.y[0]
+		sim.psi[sim.ny-1][i] = sim.vInf * sim.y[sim.ny-1]
+	}
+
+	// Outlet boundary
+	for j := 0; j < sim.ny; j++ {
+		sim.psi[j][sim.nx-1] = sim.psi[j][sim.nx-2]
+	}
+
+	fmt.Printf("Initialized airfoil stream function with circulation parameter: %.2f\n", circulation)
 }
 
 // AddAirfoil adds a cambered NACA 4-digit airfoil to the mask
-func (sim *FluidFlowSimulation) AddAirfoil(centerX, centerY, chord, angleOfAttack float64, useCustomProfile bool, thicknessRatio, camber, camberPos float64) {
+func (sim *FluidFlowSimulation) AddAirfoil(centerX, centerY, chord, angleOfAttack, circulation float64, useCustomProfile bool, thicknessRatio, camber, camberPos float64) {
 	// Convert angle from degrees to radians (note: reversing sign for correct convention)
 	// Positive AOA means nose up, which should rotate counterclockwise in our coordinate system
 	angleRad := -angleOfAttack * math.Pi / 180.0 // Negative sign added to reverse direction
@@ -364,13 +393,15 @@ func (sim *FluidFlowSimulation) AddAirfoil(centerX, centerY, chord, angleOfAttac
 			}
 		}
 	}
+	// Initialize stream function with circulation control
+	sim.initializeAirfoilStreamFunction(centerX, centerY, circulation)
 
-	// Store for reference
 	sim.airfoil = &Airfoil{
 		centerX:          centerX,
 		centerY:          centerY,
 		chord:            chord,
 		angleOfAttack:    angleOfAttack,
+		circulation:      circulation, // Add this line
 		useCustomProfile: useCustomProfile,
 		thicknessRatio:   thicknessRatio,
 		camber:           camber,
@@ -903,18 +934,18 @@ func main() {
 	case 2:
 		fmt.Println("Running simulation with rotating cylinder...")
 		// Parameters: centerX, centerY, radius, circulation
-		sim.AddRotatingCylinder(5.0, 0.0, 1.0, -2*math.Pi)
+		sim.AddRotatingCylinder(5.0, 0.0, 1.0, -3)
 	case 3:
 		fmt.Printf("Running simulation with NACA airfoil at %.1f° angle of attack...\n", angleOfAttack)
 		// Parameters: centerX, centerY, chord, angleOfAttack, useCustomProfile, thickness, camber, camberPos
 		// Note: Positive AOA means nose up (leading edge higher than trailing edge)
-		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, false, 0.12, 0.02, 0.4)
+		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, 0, true, 0.12, 0.02, 0.4)
 	case 4:
 		fmt.Printf("Running simulation with NACA 24012 airfoil at %.1f° angle of attack...\n", angleOfAttack)
 		// Parameters: centerX, centerY, chord, angleOfAttack, useCustomProfile, thickness, camber, camberPos
 		// Note: Positive AOA means nose up (leading edge higher than trailing edge)
 		// For custom profile, thickness/camber/camberPos are not used but included for compatibility
-		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, true, 0.12, 0.02, 0.4)
+		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, 0, true, 0.12, 0.02, 0.4)
 	}
 
 	// Solve and visualize
