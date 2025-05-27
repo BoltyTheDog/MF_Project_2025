@@ -2,6 +2,9 @@
 
 This repository contains two Computational Fluid Dynamics (CFD) simulation projects using different numerical methods. Each has a README.md for the instructions and use.
 
+![CFD Simulation Animation](cfd_simulation_comp%20(1).gif)
+
+
 ## Projects
 
 ### Potential Flow Simulator
@@ -20,8 +23,8 @@ This repository contains two Computational Fluid Dynamics (CFD) simulation proje
 
 ## Requirements
 
-**Potential Flow**: Go 1.18+, Python 3.6+, gonum, numpy, matplotlib
-**Boltzmann CFD**: Go 1.18+, Node.js 14.x+, npm
+-  **Potential Flow**: Go 1.18+, Python 3.6+, gonum, numpy, matplotlib
+-  **Boltzmann CFD**: Go 1.18+, Node.js 14.x+, npm
 
 ## License
 
