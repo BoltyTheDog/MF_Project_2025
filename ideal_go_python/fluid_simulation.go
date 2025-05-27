@@ -3,9 +3,7 @@ package main
 import (
 	"bufio"
 	"fmt"
-	"image/color"
 	"math"
-	"math/rand"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -14,12 +12,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"time"
-
-	"gonum.org/v1/plot"
-	"gonum.org/v1/plot/plotter"
-	"gonum.org/v1/plot/vg"
-	"gonum.org/v1/plot/vg/draw"
 )
 
 type FluidFlowSimulation struct {
@@ -49,7 +41,7 @@ type Circle struct {
 	radius           float64
 }
 
-// RotatingCylinder represents a cylinder with circulation in the flow
+// RotatingCylinder represents a cylinder with "circulation" in the flow
 type RotatingCylinder struct {
 	centerX, centerY float64
 	radius           float64
@@ -62,7 +54,7 @@ type Airfoil struct {
 	chord            float64
 	angleOfAttack    float64 // in degrees
 	useCustomProfile bool    // whether to use custom profile or NACA equation
-	circulation      float64 // circulation parameter (similar to Python's C)
+	circulation      float64 // circulation parameter (constant psi)
 	// Parameters for NACA equation
 	thicknessRatio    float64
 	camber, camberPos float64
@@ -124,7 +116,7 @@ func NewFluidFlowSimulation(nx, ny int, vInf float64, maxIter int, tol float64) 
 	return sim
 }
 
-// setBoundaryConditions sets initial boundary conditions for stream function
+// Sets initial boundary conditions for stream function
 func (sim *FluidFlowSimulation) setBoundaryConditions() {
 	// Inlet BC (x=0): u = v_inf, v = 0
 	// Stream function varies linearly with y
@@ -155,7 +147,7 @@ func (sim *FluidFlowSimulation) setBoundaryConditions() {
 	}
 }
 
-// AddCylinder adds a circular object to the flow field
+// Adds a circular object to the flow field
 func (sim *FluidFlowSimulation) AddCylinder(centerX, centerY, radius float64) {
 	// Mask solid points
 	for i := 0; i < sim.nx; i++ {
@@ -174,6 +166,7 @@ func (sim *FluidFlowSimulation) AddCylinder(centerX, centerY, radius float64) {
 	}
 }
 
+// Adds a circular object to the flow field with "circulation" the constant psi
 func (sim *FluidFlowSimulation) AddRotatingCylinder(centerX, centerY, radius, circulation float64) {
 	// Mask solid points same as regular cylinder
 	for i := 0; i < sim.nx; i++ {
@@ -246,7 +239,7 @@ func (sim *FluidFlowSimulation) initializeAirfoilStreamFunction(centerX, centerY
 
 // AddAirfoil adds a cambered NACA 4-digit airfoil to the mask
 func (sim *FluidFlowSimulation) AddAirfoil(centerX, centerY, chord, angleOfAttack, circulation float64, useCustomProfile bool, thicknessRatio, camber, camberPos float64) {
-	// Convert angle from degrees to radians (note: reversing sign for correct convention)
+	// Convert angle from degrees to radians
 	// Positive AOA means nose up, which should rotate counterclockwise in our coordinate system
 	angleRad := -angleOfAttack * math.Pi / 180.0 // Negative sign added to reverse direction
 	cosAngle := math.Cos(angleRad)
@@ -255,7 +248,7 @@ func (sim *FluidFlowSimulation) AddAirfoil(centerX, centerY, chord, angleOfAttac
 	// Initialize custom profile if needed
 	var profile [][2]float64
 	if useCustomProfile {
-		// NACA 24012 airfoil profile
+		// NACA 24012 airfoil profile from NACAs website
 		profile = [][2]float64{
 			{1.000034, 0.001260}, {0.998499, 0.001517}, {0.993901, 0.002286}, {0.986271, 0.003554},
 			{0.975654, 0.005302}, {0.962115, 0.007503}, {0.945737, 0.010126}, {0.926621, 0.013135},
@@ -401,7 +394,7 @@ func (sim *FluidFlowSimulation) AddAirfoil(centerX, centerY, chord, angleOfAttac
 		centerY:          centerY,
 		chord:            chord,
 		angleOfAttack:    angleOfAttack,
-		circulation:      circulation, // Add this line
+		circulation:      circulation,
 		useCustomProfile: useCustomProfile,
 		thicknessRatio:   thicknessRatio,
 		camber:           camber,
@@ -497,7 +490,7 @@ func (sim *FluidFlowSimulation) SolveStreamFunction() {
 	sim.calculateVelocityField()
 }
 
-// calculateVelocityField calculates velocity from stream function using central differences
+// Calculates velocity from stream function using central differences
 func (sim *FluidFlowSimulation) calculateVelocityField() {
 	// Use goroutines for parallel processing
 	var wg sync.WaitGroup
@@ -559,8 +552,7 @@ func (sim *FluidFlowSimulation) calculateVelocityField() {
 	}
 }
 
-// CalculateAerodynamicCoefficients calculates both lift and drag coefficients by integrating
-// the pressure distribution around the airfoil surface
+// Calculates both lift and drag coefficients by integrating the pressure distribution around the airfoil surface
 func (sim *FluidFlowSimulation) CalculateAerodynamicCoefficients() (float64, float64) {
 	// Only proceed if we have an airfoil
 	if sim.airfoil == nil {
@@ -629,10 +621,6 @@ func (sim *FluidFlowSimulation) CalculateAerodynamicCoefficients() (float64, flo
 			// Force is pressure times area (length in 2D)
 			force := avgPressure * length
 
-			// CORRECTED FORMULA: For a cambered airfoil, we need to flip the sign
-			// to get positive lift at 0 AOA
-			// The negative sign is due to how normal vectors are calculated relative
-			// to the coordinate system
 			liftForce -= force * (nx*math.Sin(angleRad) - ny*math.Cos(angleRad))
 			dragForce -= force * (nx*math.Cos(angleRad) + ny*math.Sin(angleRad))
 		}
@@ -650,7 +638,7 @@ func (sim *FluidFlowSimulation) CalculateAerodynamicCoefficients() (float64, flo
 	return Cl, Cd
 }
 
-// SaveResults saves plots of simulation results
+// Saves plots of simulation results
 func (sim *FluidFlowSimulation) SaveResults() {
 	// Create data directory if it doesn't exist
 	dataDir := "data"
@@ -681,7 +669,7 @@ func (sim *FluidFlowSimulation) SaveResults() {
 	sim.saveMaskData("mask")
 }
 
-// saveMaskData saves the fluid/solid mask (1 = fluid, 0 = solid)
+// Saves the fluid/solid mask (1 = fluid, 0 = solid)
 func (sim *FluidFlowSimulation) saveMaskData(filename string) {
 	dataDir := "data"
 	filepath := filepath.Join(dataDir, filename+".data")
@@ -706,9 +694,9 @@ func (sim *FluidFlowSimulation) saveMaskData(filename string) {
 	fmt.Printf("Mask data saved to %s.data\n", filename)
 }
 
-// savePlot saves a contour plot for a given field
+// Saves a contour plot for a given field
 func (sim *FluidFlowSimulation) savePlot(filename string, field [][]float64, title string) {
-	// Save data to a text file instead (simple alternative to heatmap)
+	// Save data to a text file instead
 	dataDir := "data"
 	filepath := filepath.Join(dataDir, filename+".data")
 
@@ -729,7 +717,7 @@ func (sim *FluidFlowSimulation) savePlot(filename string, field [][]float64, tit
 	fmt.Printf("Data for %s saved to %s.data\n", title, filename)
 }
 
-// saveVelocityPlot saves vectors to a data file
+// Saves vectors to a data file
 func (sim *FluidFlowSimulation) saveVelocityPlot(filename string) {
 	dataDir := "data"
 	filepath := filepath.Join(dataDir, filename+".data")
@@ -765,20 +753,7 @@ func linspace(start, end float64, num int) []float64 {
 	return result
 }
 
-// Plot implements the plot.Plotter interface for drawing a circle
-func (c *Circle) Plot(canvas draw.Canvas, plt *plot.Plot) {
-	// Simple implementation - just draw a point for now
-	pts := plotter.XYs{{X: c.centerX, Y: c.centerY}}
-	scatter, err := plotter.NewScatter(pts)
-	if err != nil {
-		panic(err)
-	}
-	scatter.GlyphStyle.Color = color.RGBA{R: 0, G: 0, B: 0, A: 255}
-	scatter.GlyphStyle.Radius = vg.Points(5)
-	scatter.Plot(canvas, plt)
-}
-
-// runVisualization executes the Python visualization script
+// Executes the Python visualization script
 func runVisualization() {
 	// Check if Python is installed
 	pythonCmd := "python"
@@ -821,22 +796,24 @@ func runVisualization() {
 	fmt.Println(outputStr)
 }
 
-// displayMenu shows the simulation options and gets user selection
-func displayMenu() (int, bool, string, int) {
+// Shows the simulation options and gets user selection
+func displayMenu() (int, bool, string, int, float64) {
 	fmt.Println("\n=== Fluid Flow Simulation Options ===")
 	fmt.Println("1. Regular Cylinder")
 	fmt.Println("2. Rotating Cylinder (with circulation)")
-	fmt.Println("3. NACA Airfoil")
-	fmt.Println("4. NACA 24012 Airfoil (custom profile)")
+	fmt.Println("3. NACA 24012 Airfoil (custom profile)")
 	fmt.Println("5. Exit")
 	fmt.Println("\nAdditional parameters:")
 	fmt.Println("- Add 'auto' to automatically run visualization after simulation")
 	fmt.Println("- For airfoil options (3-4), you can specify angle of attack in degrees")
 	fmt.Println("- Add 'res=N' to set grid resolution (e.g., 'res=100' for 100x100 grid)")
 	fmt.Println("  Default resolution is 150. Higher values give better accuracy but take longer.")
+	fmt.Println("- Add 'psi=N' to set circulation parameter for airfoils and rotating cylinders")
+	fmt.Println("  Default circulation is -3 for rotating cylinder, 0 for airfoils")
 	fmt.Println("\nExamples:")
-	fmt.Println("  '3 5' - NACA airfoil at 5 degrees angle of attack")
-	fmt.Println("  '4 auto 10 res=200' - NACA 24012 at 10 degrees with 200x200 grid and auto visualization")
+	fmt.Println("  '3 auto 10 res=200' - NACA 24012 at 10 degrees with 200x200 grid and auto visualization")
+	fmt.Println("  '2 psi=-5 auto' - Rotating cylinder with circulation -5 and auto visualization")
+	fmt.Println("  '3 auto 10 res=600 psi=-3' - NACA 24012 at 10 degrees, 600x600 grid, circulation -3")
 	fmt.Print("\nEnter your choice: ")
 
 	reader := bufio.NewReader(os.Stdin)
@@ -853,7 +830,8 @@ func displayMenu() (int, bool, string, int) {
 	// Check if auto option is included
 	autoVisualize := false
 	params := ""
-	resolution := 150 // Default resolution
+	resolution := 150  // Default resolution
+	circulation := 0.0 // Default circulation (will be set based on object type)
 
 	// Get the choice first
 	choiceStr := parts[0]
@@ -878,6 +856,15 @@ func displayMenu() (int, bool, string, int) {
 			} else {
 				fmt.Printf("Invalid resolution format: '%s'. Using default (150x150).\n", part)
 			}
+		} else if strings.HasPrefix(part, "psi=") {
+			// Extract circulation value
+			psiStr := strings.TrimPrefix(part, "psi=")
+			psi, err := strconv.ParseFloat(psiStr, 64)
+			if err == nil {
+				circulation = psi
+			} else {
+				fmt.Printf("Invalid circulation format: '%s'. Using default circulation.\n", part)
+			}
 		} else {
 			// Collect additional parameters (like angle of attack)
 			if params != "" {
@@ -887,20 +874,39 @@ func displayMenu() (int, bool, string, int) {
 		}
 	}
 
-	return choice, autoVisualize, params, resolution
+	return choice, autoVisualize, params, resolution, circulation
 }
 
 func main() {
-	// Initialize random seed
-	rand.Seed(time.Now().UnixNano())
-
 	// Display menu and get user choice
-	choice, autoVisualize, params, resolution := displayMenu()
+	choice, autoVisualize, params, resolution, circulation := displayMenu()
 
 	// Exit if user chose option 5
 	if choice == 5 {
 		fmt.Println("Exiting program.")
 		return
+	}
+
+	// Set default circulation values based on object type if not specified by user
+	circulationSet := false
+	for _, part := range strings.Fields(strings.ToLower(fmt.Sprintf("%v", params))) {
+		if strings.Contains(part, "psi=") {
+			circulationSet = true
+			break
+		}
+	}
+
+	// Check if circulation was set via psi= parameter in the original input
+	if circulation == 0.0 && !circulationSet {
+		// Set default circulation based on object type
+		switch choice {
+		case 2: // Rotating cylinder
+			circulation = -3.0
+		case 3, 4: // Airfoils
+			circulation = 0.0
+		default:
+			circulation = 0.0
+		}
 	}
 
 	// Create simulation with appropriate parameters
@@ -914,7 +920,6 @@ func main() {
 
 	sim := NewFluidFlowSimulation(resolution, resolution, 1.0, maxIter, 1e-8)
 
-	// Parse angle of attack if provided for airfoil options
 	angleOfAttack := 0.0
 	if (choice == 3 || choice == 4) && params != "" {
 		angle, err := strconv.ParseFloat(params, 64)
@@ -932,20 +937,14 @@ func main() {
 		fmt.Println("Running simulation with regular cylinder...")
 		sim.AddCylinder(5.0, 0.0, 1.0)
 	case 2:
-		fmt.Println("Running simulation with rotating cylinder...")
+		fmt.Printf("Running simulation with rotating cylinder (circulation: %.2f)...\n", circulation)
 		// Parameters: centerX, centerY, radius, circulation
-		sim.AddRotatingCylinder(5.0, 0.0, 1.0, -3)
+		sim.AddRotatingCylinder(5.0, 0.0, 1.0, circulation)
 	case 3:
-		fmt.Printf("Running simulation with NACA airfoil at %.1f° angle of attack...\n", angleOfAttack)
-		// Parameters: centerX, centerY, chord, angleOfAttack, useCustomProfile, thickness, camber, camberPos
+		fmt.Printf("Running simulation with NACA airfoil at %.1f° angle of attack (circulation: %.2f)...\n", angleOfAttack, circulation)
+		// Parameters: centerX, centerY, chord, angleOfAttack, circulation, useCustomProfile, thickness, camber, camberPos
 		// Note: Positive AOA means nose up (leading edge higher than trailing edge)
-		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, 0, true, 0.12, 0.02, 0.4)
-	case 4:
-		fmt.Printf("Running simulation with NACA 24012 airfoil at %.1f° angle of attack...\n", angleOfAttack)
-		// Parameters: centerX, centerY, chord, angleOfAttack, useCustomProfile, thickness, camber, camberPos
-		// Note: Positive AOA means nose up (leading edge higher than trailing edge)
-		// For custom profile, thickness/camber/camberPos are not used but included for compatibility
-		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, 0, true, 0.12, 0.02, 0.4)
+		sim.AddAirfoil(2.5, 0.0, 7.0, angleOfAttack, circulation, true, 0.12, 0.02, 0.4)
 	}
 
 	// Solve and visualize
