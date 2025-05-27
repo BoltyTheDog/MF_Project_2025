@@ -23,8 +23,8 @@ This repository contains two Computational Fluid Dynamics (CFD) simulation proje
 
 ## Requirements
 
-**-Potential Flow**: Go 1.18+, Python 3.6+, gonum, numpy, matplotlib
-**-Boltzmann CFD**: Go 1.18+, Node.js 14.x+, npm
+-  **Potential Flow**: Go 1.18+, Python 3.6+, gonum, numpy, matplotlib
+-  **Boltzmann CFD**: Go 1.18+, Node.js 14.x+, npm
 
 ## License
 
