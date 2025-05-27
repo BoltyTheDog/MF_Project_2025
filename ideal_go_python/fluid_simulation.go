@@ -551,7 +551,7 @@ func (sim *FluidFlowSimulation) calculateVelocityField() {
 	}
 }
 
-// Calculates Lift Coefficient from the pressure distribution
+// Calculates Lift Coefficient from the pressure distribution, sadly just an approximation
 func (sim *FluidFlowSimulation) CalculateAerodynamicCoefficients() float64 {
 	if sim.airfoil == nil {
 		fmt.Println("No airfoil present in simulation")
