@@ -2,7 +2,7 @@
 
 This repository contains two Computational Fluid Dynamics (CFD) simulation projects using different numerical methods. Each has a README.md for the instructions and use.
 
-[![UPC](/assets/upcfd.gif)]
+[![UPC](cfd_simulation_comp (1).gif)]
 
 
 ## Projects
